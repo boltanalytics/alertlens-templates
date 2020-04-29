@@ -1,0 +1,160 @@
+{
+	"id": "EC2_Basic_Standard_Instances",
+	"name": "EC2 Basic Standard Instances",
+	"version": 1.0,
+	"sourceType": "AWS",
+	"parameters": [
+		{
+            "name" : "Period",
+			"type": "Integer",
+            "help" : "300 seconds for Basic Monitoring and 60 seconds for Detailed Monitoring",
+            "default": 300
+		},
+		{
+            "name" : "Bucket Span",
+			"type": "Integer",
+            "help" : "This is same value as Period but in minutes",
+            "default": 5
+		},
+		{
+            "name" : "Schedule",
+			"type": "Integer",
+            "help" : "How often CloudWatch will be polled for new data (in minutes)",
+            "default": 15
+		},
+		{
+            "name" : "Instance List",
+			"type": "Text",
+            "help": "Comma separated list of EC2 Instances to be monitored. Put \\\" around each Instance Id e.g. \\\"i-052daec0bcee18cb7\\\", \\\"i-0acdee7bd27c4e08a\\\", \\\"i-eefc80324971f64e7\\\""
+		},
+        {
+            "name" : "Alert Definitions",
+            "type": "Text",
+            "help": "Comma separated list of Alert Definitions to apply to all the jobs"
+        }
+	],
+	"jobs": {
+		"entries": [
+            {
+				"id": "EC2_CPUUtilization",
+				"name": "EC2 CPUUtilization",
+				"query": "{ \"Resources\" : { \"AWS/EC2\": { \"Dimension\":{ \"InstanceId\": [<<<Instance List>>>] }, \"Metrics\":[\"CPUUtilization\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [{
+				    "op": "NOOP",
+				    "field": "CPUUtilization",
+				    "displayName": "CPUUtilization"
+			    }],
+			    "model": "weekly-positive-percentage"
+			},
+            {
+				"id": "EC2_DiskOps",
+				"name": "EC2 DiskOps",
+				"query": "{ \"Resources\" : { \"AWS/EC2\": { \"Dimension\":{ \"InstanceId\": [<<<Instance List>>>] }, \"Metrics\":[\"DiskReadOps\", \"DiskWriteOps\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                   {
+				    "op": "NOOP",
+				    "field": "DiskReadOps",
+				    "displayName": "DiskReadOps"
+			       },
+                   {
+				    "op": "NOOP",
+				    "field": "DiskWriteOps",
+				    "displayName": "DiskWriteOps"
+			       }
+                ]
+			},
+            {
+				"id": "EC2_DiskBytes",
+				"name": "EC2 DiskBytes",
+				"query": "{ \"Resources\" : { \"AWS/EC2\": { \"Dimension\":{ \"InstanceId\": [<<<Instance List>>>] }, \"Metrics\":[\"DiskReadBytes\", \"DiskWriteBytes\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                   {
+				    "op": "NOOP",
+				    "field": "DiskReadBytes",
+				    "displayName": "DiskReadBytes"
+			       },
+                   {
+				    "op": "NOOP",
+				    "field": "DiskWriteBytes",
+				    "displayName": "DiskWriteBytes"
+			       }
+                ]
+			},
+            {
+				"id": "EC2_NetworkBytes",
+				"name": "EC2 NetworkBytes",
+				"query": "{ \"Resources\" : { \"AWS/EC2\": { \"Dimension\":{ \"InstanceId\": [<<<Instance List>>>] }, \"Metrics\":[\"NetworkIn\", \"NetworkOut\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                   {
+				    "op": "NOOP",
+				    "field": "NetworkIn",
+				    "displayName": "NetworkIn"
+			       },
+                   {
+				    "op": "NOOP",
+				    "field": "NetworkOut",
+				    "displayName": "NetworkOut"
+			       }
+                ]
+			},
+            {
+				"id": "EC2_NetworkPackets",
+				"name": "EC2 NetworkPackets",
+				"query": "{ \"Resources\" : { \"AWS/EC2\": { \"Dimension\":{ \"InstanceId\": [<<<Instance List>>>] }, \"Metrics\":[\"NetworkPacketsIn\", \"NetworkPacketsOut\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                   {
+				    "op": "NOOP",
+				    "field": "NetworkPacketsIn",
+				    "displayName": "NetworkPacketsIn"
+			       },
+                   {
+				    "op": "NOOP",
+				    "field": "NetworkPacketsOut",
+				    "displayName": "NetworkPacketsOut"
+			       }
+                ]
+			}
+
+		],
+		"defaults": {
+			"partitionFields": ["InstanceId"],
+			"bucketSpan": "<<<Bucket Span>>>",
+			"schedule": "<<<Schedule>>>",
+            "alertIds" : "<<<Alert Definitions>>>",
+			"queryDelayInSecs": 5,
+			"model": "weekly-positive-unbounded",
+			"typeName": "EC2 Instance"
+		}
+	},
+	"models": [
+        {
+		"name": "weekly-positive-percentage",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "bounded",
+			"boundType": "percentage",
+			"lowerBound": 0,
+			"upperBound": 100
+		    }
+	    },
+        {
+		"name": "weekly-positive-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "unbounded"
+		    }
+	    }
+    ]
+}

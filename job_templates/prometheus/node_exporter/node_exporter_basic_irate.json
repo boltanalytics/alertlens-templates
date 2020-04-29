@@ -1,0 +1,229 @@
+{
+	"id": "node_exporter_basic_irate",
+	"name": "Basic Node Exporter Metrics",
+	"version": 0.1,
+	"sourceType": "PROMETHEUS",
+	"parameters": [
+		{	"name":"Node Selection",
+			"type": "Text",
+			"help": "Specify regular expression to match nodename e.g. .+ for all nodes",
+            "default" : ".+"
+		},
+		{	"name":"Bucket Span",
+			"type": "Integer",
+            "help" : "Interval at which metric will be calculated (in minutes)",
+            "default": 1
+		},
+		{	"name":"Schedule",
+			"type": "Integer",
+            "help" : "How often the data source will be polled for new data (in minutes)",
+            "default": 1
+		},
+		{	"name": "Query Delay",
+			"type": "Integer",
+            "help" : "Delay quering for Prometheus scraping to finish (in seconds)",
+            "default": 5
+		},
+        {
+            "name" : "Alert Definition",
+            "type": "Text",
+            "help": "Alert Definition to apply to all the jobs"
+        }
+	],
+	"jobs": {
+		"entries": [
+			{
+				"id": "CPU_Busy",
+				"name": "CPU Busy",
+				"query": "(((count(count(node_cpu_seconds_total) by (instance, cpu)) by (instance)) - avg(sum(irate(node_cpu_seconds_total{mode='idle'}[5m])) by (instance, mode)) by (instance))*100) / (count(count(node_cpu_seconds_total) by (instance, cpu)) by (instance)) * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename"],
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "CPU Busy"
+			    }],
+			    "model": "weekly-positive-percentage"
+			},
+			{
+				"id": "Load_Average_1min",
+				"name": "Load Average (1min)",
+				"query": "node_load1 * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename"],
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "Load Average (1min)"
+			}]
+			},
+            {
+				"id": "Application_Memory_Usage_Percentage",
+				"name": "Application Memory Usage Percentage",
+				"query": "(((node_memory_MemTotal_bytes - node_memory_MemFree_bytes - node_memory_Buffers_bytes - node_memory_Cached_bytes - node_memory_Slab_bytes - node_memory_PageTables_bytes - node_memory_SwapCached_bytes) * 100) / node_memory_MemTotal_bytes)* on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename"],
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "Application Memory Usage Percentage"
+			    }],
+			    "model": "weekly-positive-percentage"
+			},
+			{
+				"id": "File_System_Usage_Detail",
+				"name": "File System Usage Detail",
+				"query": "100 - ((node_filesystem_avail_bytes{fstype!~'rootfs|tmpfs|vfat|fuse.*'} * 100) / node_filesystem_size_bytes{fstype!~'rootfs|tmpfs|vfat|fuse.*'}) * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename", "mountpoint"],
+                "typeName" : "Mount Point",
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "File System Usage Detail"
+			    }],
+			    "model": "weekly-positive-percentage"
+			},
+			{
+				"id": "Disk_Reads_and_Writes_Completed",
+				"name": "Disk Reads and Writes Completed",
+				"query": "(label_replace(irate(node_disk_reads_completed_total[5m])/1024, \"metric\", \"node_disk_reads_completed_total\", \"job\", \".*\") or label_replace(irate(node_disk_writes_completed_total[5m])/1024, \"metric\", \"node_disk_writes_completed_total\", \"job\", \".*\")) * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename", "device"],
+                "typeName" : "Disk Device",
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "Disk Reads and Writes Completed"
+			}]
+			},
+			{
+				"id": "Disk_Reads_and_Write_KBs",
+				"name": "Disk Reads and Write KB/s",
+				"query": "(label_replace(irate(node_disk_read_bytes_total[5m])/1024, \"metric\", \"node_disk_read_bytes_total\", \"job\", \".*\") or label_replace(irate(node_disk_written_bytes_total[5m])/1024, \"metric\", \"node_disk_written_bytes_total\", \"job\", \".*\")) * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename", "device"],
+                "typeName" : "Disk Device",
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "Disk Reads and Write KB/s"
+			}]
+			},
+			{
+				"id": "Disk_Busy_Percent",
+				"name": "Disk Busy Percent",
+				"query": "(irate(node_disk_io_time_seconds_total[5m]) * 100) * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename", "device"],
+                "typeName" : "Disk Device",
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "Disk Busy Percent"
+			    }],
+			    "model": "weekly-positive-percentage"
+			},
+			{
+				"id": "Network_Transmitted_and_Received_KBs",
+				"name": "Network Transmitted and Received KB/s",
+				"query": "(label_replace(irate(node_network_receive_bytes_total{device!~\"veth.*\"}[5m])/1024, \"metric\", \"node_network_receive_bytes_total\", \"job\", \".*\") or label_replace(irate(node_network_transmit_bytes_total{device!~\"veth.*\"}[5m])/1024, \"metric\", \"node_network_transmit_bytes_total\", \"job\", \".*\")) * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename", "device", "metric"],
+                "typeName" : "Network Device",
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "Network Transmitted and Received KB/s"
+			}]
+			},
+			{
+				"id": "Network_Transmitted_and_Received_Packets",
+				"name": "Network Transmitted and Received Packets",
+				"query": "(label_replace(irate(node_network_receive_packets_total{device!~\"veth.*\"}[5m])/1024, \"metric\", \"node_network_receive_packets_total\", \"job\", \".*\") or label_replace(irate(node_network_transmit_packets_total{device!~\"veth.*\"}[5m])/1024, \"metric\", \"node_network_transmit_packets_total\", \"job\", \".*\")) * on(instance) group_left(nodename) node_uname_info{nodename=~\"<<<Node Selection>>>\"}",
+				"partitionFields": ["nodename", "device", "metric"],
+                "typeName" : "Network Device",
+				"aggregations": [{
+				"op": "NOOP",
+				"field": "value",
+				"displayName": "Network Transmitted and Received Packets"
+			}]
+			}
+		],
+		"defaults": {
+			"bucketSpan": "<<<Bucket Span>>>",
+			"schedule": "<<<Schedule>>>",
+			"queryDelayInSecs": "<<<Query Delay>>>",
+			"model": "weekly-positive-unbounded",
+			"typeName": "nodename",
+            "alertIds" : "<<<Alert Definition>>>"
+		}
+	},
+	"models": [
+        {
+		"name": "weekly-positive-percentage",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "bounded",
+			"boundType": "percentage",
+			"lowerBound": 0,
+			"upperBound": 100
+		    }
+	    },
+        {
+		"name": "weekly-positive-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "unbounded"
+		    }
+	    },
+        {
+		"name": "weekly-negative-percentage",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "negative",
+			"valueBounds": "bounded",
+			"boundType": "percentage",
+			"lowerBound": 0,
+			"upperBound": 100
+		    }
+	    },
+        {
+		"name": "weekly-positive-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "unbounded"
+		    }
+	    },
+        {
+		"name": "weekly-all-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "VARAutoEncoder",
+		"anAdvancedOptions": {
+			"timeseries": "histogram",
+			"variation": "low",
+			"detectionType": "all",
+			"valueBounds": "unbounded"
+		}
+	  }
+    ]
+
+}

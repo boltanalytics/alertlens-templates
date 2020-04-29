@@ -1,0 +1,132 @@
+{
+	"id": "EBS_Basic_Metrics",
+	"name": "EBS Basic Metrics",
+	"version": 1.0,
+	"sourceType": "AWS",
+	"parameters": [
+		{
+            "name" : "Period",
+			"type": "Integer",
+            "help" : "300 seconds for Basic Monitoring and 60 seconds for Detailed Monitoring",
+            "default": 300
+		},
+		{
+            "name" : "Bucket Span",
+			"type": "Integer",
+            "help" : "This is same value as Period but in minutes",
+            "default": 5
+		},
+		{
+            "name" : "Schedule",
+			"type": "Integer",
+            "help" : "How often CloudWatch will be polled for new data (in minutes)",
+            "default": 15
+		},
+		{
+            "name" : "VolumeId List",
+			"type": "Text",
+            "help": "Comma separated list of VolumeId to be monitored. Put \\\" around each e.g. \\\"vol-052daec0bcee18cb7\\\", \\\"vol-0acdee7bd27c4e08a\\\", \\\"vol-eefc80324971f64e7\\\""
+		},
+        {
+            "name" : "Alert Definitions",
+            "type": "Text",
+            "help": "Comma separated list of Alert Definitions to apply to all the jobs"
+        }
+	],
+	"jobs": {
+		"entries": [
+            {
+				"id": "EBS_IOPS_Throughput",
+				"name": "EBS IOPS Throughput",
+				"query": "{ \"Resources\" : { \"AWS/EBS\": { \"Dimension\":{ \"VolumeId\": [<<<VolumeId List>>>] }, \"Metrics\":[\"VolumeReadOps\", \"VolumeWriteOps\", \"VolumeReadBytes\", \"VolumeWriteBytes\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "VolumeReadOps",
+				    "displayName": "VolumeReadOps"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "VolumeWriteOps",
+				    "displayName": "VolumeWriteOps"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "VolumeReadBytes",
+				    "displayName": "VolumeReadBytes"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "VolumeWriteBytes",
+				    "displayName": "VolumeWriteBytes"
+			    }
+                ]
+			},
+            {
+				"id": "EBS_Volume_Idle",
+				"name": "EBS Volume Idle",
+				"query": "{ \"Resources\" : { \"AWS/EBS\": { \"Dimension\":{ \"VolumeId\": [<<<VolumeId List>>>] }, \"Metrics\":[\"VolumeIdleTime\"], \"Statistics\": \"Sum\" } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "VolumeIdleTime",
+				    "displayName": "VolumeIdleTime"
+			    }
+                ]
+			},
+            {
+				"id": "EBS_Volume_QueueLength",
+				"name": "EBS Volume QueueLength",
+				"query": "{ \"Resources\" : { \"AWS/EBS\": { \"Dimension\":{ \"VolumeId\": [<<<VolumeId List>>>] }, \"Metrics\":[\"VolumeQueueLength\"], \"Statistics\": \"Average\" } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "VolumeQueueLength",
+				    "displayName": "VolumeQueueLength"
+			    }
+                ]
+			}
+		],
+		"defaults": {
+			"partitionFields": ["VolumeId"],
+			"bucketSpan": "<<<Bucket Span>>>",
+			"schedule": "<<<Schedule>>>",
+            "alertIds" : "<<<Alert Definitions>>>",
+			"queryDelayInSecs": 5,
+			"model": "weekly-all-unbounded",
+			"typeName": "EBS VolumeId"
+		}
+	},
+	"models": [
+        {
+		"name": "weekly-positive-percentage",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anDetectionType": "positive",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "bounded",
+			"boundType": "percentage",
+			"lowerBound": 0,
+			"upperBound": 100
+		    }
+	    },
+        {
+		"name": "weekly-all-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "all",
+			"valueBounds": "unbounded"
+		    }
+	    }
+    ]
+}

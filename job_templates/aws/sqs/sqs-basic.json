@@ -1,0 +1,96 @@
+{
+	"id": "SQS_Basic_Metrics",
+	"name": "SQS Basic Metrics",
+	"version": 1.0,
+	"sourceType": "AWS",
+	"parameters": [
+		{
+            "name" : "Period",
+			"type": "Integer",
+            "help" : "300 seconds for Basic Monitoring and 60 seconds for Detailed Monitoring",
+            "default": 300
+		},
+		{
+            "name" : "Bucket Span",
+			"type": "Integer",
+            "help" : "This is same value as Period but in minutes",
+            "default": 5
+		},
+		{
+            "name" : "Schedule",
+			"type": "Integer",
+            "help" : "How often CloudWatch will be polled for new data (in minutes)",
+            "default": 15
+		},
+		{
+            "name" : "QueueName List",
+			"type": "Text",
+            "help": "Comma separated list of Queues to be monitored. Put \\\" around each Queue e.g. \\\"queue1\\\", \\\"queue2\\\", \\\"queue3\\\""
+		},
+        {
+            "name" : "Alert Definitions",
+            "type": "Text",
+            "help": "Comma separate list of Alert Definitions to apply to all the jobs"
+        }
+	],
+	"jobs": {
+		"entries": [
+            {
+				"id": "SQS_NumberOfMessages",
+				"name": "SQS Number of Messages",
+				"query": "{ \"Resources\" : { \"AWS/SQS\": { \"Dimension\":{ \"QueueName\": [<<<QueueName List>>>] }, \"Metrics\":[\"ApproximateNumberOfMessagesNotVisible\", \"ApproximateNumberOfMessagesVisible\", \"NumberOfMessagesDeleted\", \"NumberOfMessagesReceived\", \"NumberOfMessagesSent\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "ApproximateNumberOfMessagesNotVisible",
+				    "displayName": "ApproximateNumberOfMessagesNotVisible"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "ApproximateNumberOfMessagesVisible",
+				    "displayName": "ApproximateNumberOfMessagesVisible"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "NumberOfMessagesDeleted",
+				    "displayName": "NumberOfMessagesDeleted"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "NumberOfMessagesReceived",
+				    "displayName": "NumberOfMessagesReceived"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "NumberOfMessagesSent",
+				    "displayName": "NumberOfMessagesSent"
+			    }
+                ]
+			}
+		],
+		"defaults": {
+			"partitionFields": ["QueueName"],
+			"bucketSpan": "<<<Bucket Span>>>",
+			"schedule": "<<<Schedule>>>",
+            "alertIds" : "<<<Alert Definitions>>>",
+			"queryDelayInSecs": 5,
+			"model": "weekly-all-unbounded",
+			"typeName": "SQS QueueName"
+		}
+	},
+	"models": [
+        {
+		"name": "weekly-all-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "all",
+			"valueBounds": "unbounded"
+		    }
+	    }
+    ]
+}

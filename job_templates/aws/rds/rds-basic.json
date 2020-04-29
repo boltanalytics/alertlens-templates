@@ -1,0 +1,143 @@
+{
+	"id": "RDS_Basic_Metrics",
+	"name": "RDS Basic Metrics",
+	"version": 1.0,
+	"sourceType": "AWS",
+	"parameters": [
+		{
+            "name" : "Period",
+			"type": "Integer",
+            "help" : "300 seconds for Basic Monitoring and 60 seconds for Detailed Monitoring",
+            "default": 300
+		},
+		{
+            "name" : "Bucket Span",
+			"type": "Integer",
+            "help" : "This is same value as Period but in minutes",
+            "default": 5
+		},
+		{
+            "name" : "Schedule",
+			"type": "Integer",
+            "help" : "How often CloudWatch will be polled for new data (in minutes)",
+            "default": 15
+		},
+		{
+            "name" : "DBInstanceIdentifier List",
+			"type": "Text",
+            "help": "Comma separated list of DBInstanceIdentifier to be monitored. Put \\\" around each e.g. \\\"rds1\\\", \\\"rds2\\\", \\\"rds3\\\""
+		},
+        {
+            "name" : "Alert Definitions",
+            "type": "Text",
+            "help": "Comma separate list of Alert Definitions to apply to all the jobs"
+        }
+	],
+	"jobs": {
+		"entries": [
+            {
+				"id": "RDS_CPUUtilization",
+				"name": "RDS CPUUtilization",
+				"query": "{ \"Resources\" : { \"AWS/RDS\": { \"Dimension\":{ \"DBInstanceIdentifier\": [<<<DBInstanceIdentifier List>>>] }, \"Metrics\":[\"CPUUtilization\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "CPUUtilization",
+				    "displayName": "CPUUtilization"
+			    }
+                ],
+			    "model": "weekly-positive-percentage"
+			},
+            {
+				"id": "RDS_IOPS_Throughput",
+				"name": "RDS IOPS Throughput",
+				"query": "{ \"Resources\" : { \"AWS/RDS\": { \"Dimension\":{ \"DBInstanceIdentifier\": [<<<DBInstanceIdentifier List>>>] }, \"Metrics\":[\"ReadIOPS\", \"WriteIOPS\", \"ReadThroughput\", \"WriteThroughput\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "ReadIOPS",
+				    "displayName": "ReadIOPS"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "WriteIOPS",
+				    "displayName": "WriteIOPS"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "ReadThroughput",
+				    "displayName": "ReadThroughput"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "WriteThroughput",
+				    "displayName": "WriteThroughput"
+			    }
+                ]
+			},
+            {
+				"id": "RDS_Disk_Busy",
+				"name": "RDS Disk Busy",
+				"query": "{ \"Resources\" : { \"AWS/RDS\": { \"Dimension\":{ \"DBInstanceIdentifier\": [<<<DBInstanceIdentifier List>>>] }, \"Metrics\":[\"ReadLatency\", \"WriteLatency\", \"DiskQueueDepth\"] } }, \"Period\":<<<Period>>> }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "ReadLatency",
+				    "displayName": "ReadLatency"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "WriteLatency",
+				    "displayName": "WriteLatency"
+			    },
+                {
+				    "op": "NOOP",
+				    "field": "DiskQueueDepth",
+				    "displayName": "DiskQueueDepth"
+			    }
+                ]
+			}
+		],
+		"defaults": {
+			"partitionFields": ["DBInstanceIdentifier"],
+			"bucketSpan": "<<<Bucket Span>>>",
+			"schedule": "<<<Schedule>>>",
+            "alertIds" : "<<<Alert Definitions>>>",
+			"queryDelayInSecs": 5,
+			"model": "weekly-all-unbounded",
+			"typeName": "RDS DBInstanceIdentifier"
+		}
+	},
+	"models": [
+        {
+		"name": "weekly-positive-percentage",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anDetectionType": "positive",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "bounded",
+			"boundType": "percentage",
+			"lowerBound": 0,
+			"upperBound": 100
+		    }
+	    },
+        {
+		"name": "weekly-all-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "all",
+			"valueBounds": "unbounded"
+		    }
+	    }
+    ]
+}
