@@ -1,0 +1,77 @@
+{
+	"id": "EKS_Basic_Metrics",
+	"name": "EKS Basic Metrics",
+	"version": 1.0,
+	"sourceType": "AWS",
+	"parameters": [
+		{
+            "name" : "Period",
+			"type": "Integer",
+            "help" : "300 seconds for Basic Monitoring and 60 seconds for Detailed Monitoring",
+            "default": 300
+		},
+		{
+            "name" : "Bucket Span",
+			"type": "Integer",
+            "help" : "This is same value as Period but in minutes",
+            "default": 5
+		},
+		{
+            "name" : "Schedule",
+			"type": "Integer",
+            "help" : "How often CloudWatch will be polled for new data (in minutes)",
+            "default": 15
+		},
+		{
+            "name" : "VolumeId List",
+			"type": "Text",
+            "help": "Comma separated list of VolumeId to be monitored. Put \\\" around each e.g. \\\"vol-052daec0bcee18cb7\\\", \\\"vol-0acdee7bd27c4e08a\\\", \\\"vol-eefc80324971f64e7\\\""
+		},
+        {
+            "name" : "Alert Definitions",
+            "type": "Text",
+            "help": "Comma separated list of Alert Definitions to apply to all the jobs"
+        }
+	],
+	"jobs": {
+		"entries": [
+            {
+				"id": "EKS_Container_Restarts",
+				"name": "EKS Container Restarts",
+				"query": "{ \"Resources\" : { \"AWS/EKS\": { \"Dimension\":{ \"ClusterName\": [ \"prod-east-2\"] }, \"Metrics\":[\"pod_number_of_container_restarts\"] } }, \"Period\": 300, \"Statistics\" : \"Sum\" }",
+			    "aggregations": [
+                {
+				    "op": "NOOP",
+				    "field": "pod_number_of_container_restarts",
+				    "displayName": "pod_number_of_container_restarts"
+			    }
+                ]
+			}
+		],
+		"defaults": {
+			"partitionFields": ["VolumeId"],
+			"bucketSpan": "<<<Bucket Span>>>",
+			"schedule": "<<<Schedule>>>",
+            "alertIds" : "<<<Alert Definitions>>>",
+			"queryDelayInSecs": 5,
+			"model": "weekly-all-unbounded",
+			"typeName": "EBS VolumeId"
+		}
+	},
+	"models": [
+        {
+		"name": "weekly-positive-unbounded",
+		"anTrainingFrequency": "weekly",
+		"anMinTrainingHours": 24,
+		"anInferenceSetSize": 30,
+		"anMaxTrainingHours": 168,
+		"anModel": "MV-GB-Anomaly",
+		"anDetectionType": "positive",
+		"anAdvancedOptions": {
+			"timeseries": "gauge",
+			"detectionType": "positive",
+			"valueBounds": "unbounded"
+		    }
+	    }
+    ]
+}
